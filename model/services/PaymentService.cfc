@@ -8,6 +8,14 @@ component accessors="true" {
         return rtnStruct;
     }
 
+    public string function enrollAutoCharge(required numeric rdo_ccs, required string txtBookingNumber) {
+        var sErrorMessage2 = getPaymentDataProvider().enrollAutoCharge(
+            rdo_ccs = arguments.rdo_ccs,
+            txtBookingNumber = arguments.txtBookingNumber
+        );
+        return sErrorMessage2;
+    }
+
     public struct function verifyBooking(required string Email, required numeric BookingNumber) {
         var structResults = getBookingDataProvider().VerifyBooking(
             Email = arguments.Email,

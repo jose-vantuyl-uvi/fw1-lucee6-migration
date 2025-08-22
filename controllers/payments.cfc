@@ -20,6 +20,61 @@ component accessors="true" {
         rc.message = 'Something went wrong while processing your request.';
     }
 
+    function autoCharge(rc){
+        error_test_handler = getErrorNTestHandler();
+
+        if(isDefined("form.txtBookingNumber")){
+
+            if( error_test_handler.isDoingTestNow() ){
+                writeLog(
+                    type = 'information',
+                    file = 'OnlinePaymentLogByTest',
+                     text="booking='#form.txtBookingNumber#'  
+				        CC_id='#form.rdo_CCs#' Info='Posted from confirmation to autoCharge'"
+                );
+            }
+            
+            sErrorMessage2 = getPaymentService().enrollAutoCharge(
+                rdo_ccs = form.rdo_CCs,
+                txtBookingNumber = form.txtBookingNumber
+            );
+            if(len(sErrorMessage2) gt 0){
+                if(error_test_handler.isDoingTestNow()){
+                    writeLog(
+                        type = 'information',
+                        file = 'OnlinePaymentLogByTest',
+                        text = 'booking=''#form.txtBookingNumber#''  CC_id=''#form.rdo_CCs#'' Info=''Error happened at oracle side:#sErrorMessage2#'''
+                    );
+                }
+                writeLog(
+                    type = 'error',
+                    file = 'OnlinePaymentErr',
+                    text = 'Error=''Error happened when calling enroll_autocharge to enroll:#sErrorMessage2#''  booking=''#Client.currentBookingNumber#'' CC_id=''#arrExistingCC[1].CREDIT_CARD_ID#'''
+                );
+                client.ccSelectedMessage = 'Sorry, a technical error happened when enrolling this Credit Card to Automatical-Charge. Administrtor was notified and will solve the problem as soon as possible.';
+            }else{
+                client.ccSelectedMessage = 'Thank you for enrolling this Credit Card to Automatical-Charge.';
+            }
+            structDelete(client, 'currentbookingnumber');
+            structDelete(client, 'currentccnumber');
+            structDelete(client, 'failedbookfinddt');
+            structDelete(client, 'failedbookfindtries');
+            structDelete(client, 'failedpaymentdt');
+            structDelete(client, 'failedpaymenttries');
+            structDelete(client, 'paymentsuccessmessage');
+            structDelete(client, 'remainingbalance');
+            variables.fw.redirect(action = 'payemtns.autoCharge');
+        }else if(isDefined('Client.ccSelectedMessage')){
+            writeLog(
+                type = 'information',
+                file = 'OnlinePaymentLogByTest',
+                text = 'Info=''SelectCCAutoCharge.cfm: after CC selection'''
+            );
+        } else {
+            variables.fw.redirect(action = 'main.default');
+        }
+    }
+
     function confirmation(rc) {
         rc.SandalsBookingNumber = rc.SandalsBookingNumber ?: 0;
         rc.MinPayment = rc.MinPayment ?: 0;
@@ -45,8 +100,6 @@ component accessors="true" {
         rc.PaymentType = rc.PaymentType ?: '';
         rc.comment = rc.comment ?: '';
 
-
-        // error_test_handler = new model.utils.ErrorNTestHandler().initurl(url);
         error_test_handler = getErrorNTestHandler();
 
         rc.isPaymentSuccessMessageNotDefined = not isDefined('Client.PaymentSuccessMessage');
@@ -60,8 +113,7 @@ component accessors="true" {
 
             rc.isMonthNotDefined = !isDefined('session.OPPaymentInfo.month');
             if (rc.isMonthNotDefined) {
-                cfdump(var = session.OPPaymentInfo, label = "inside month validation", abort = true);
-                // variables.fw.redirect(action = 'main.default', queryString = 'msg=503');
+                variables.fw.redirect(action = 'main.default', queryString = 'msg=503');
             }
 
             rc.NewInvoiceID = getInvoiceService().getNewInvoiceId();
@@ -74,7 +126,6 @@ component accessors="true" {
                 text = 'booking=''#rc.SandalsBookingNumber#''  Info=''Called obe_pack.get_invoice_id, NewInvoiceID:#rc.NewInvoiceID#--INVOICE:#rc.INVOICE#'' CardNumber=''#session.OPPaymentInfo.CreditCard#'' amount=''#rc.PaymentAmount#'''
             );
 
-            // rc.ccAuthorizationStruct = {};
         } catch (any ex) {
             error_test_handler.reportError(
                 ex,

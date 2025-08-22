@@ -9,6 +9,21 @@ component accessors="true" {
         return NewInvoiceID;
     }
 
+
+    public string function enrollAutoCharge(required numeric rdo_ccs, required string txtBookingNumber) {
+        sErrorMessage2 = '';
+        try {
+            cfstoredproc(procedure = "enroll_autocharge", datasource = variables.datasourceWebgold) {
+                cfprocparam(type = "IN", cfsqltype = "cf_sql_numeric", value = rdo_ccs);
+                cfprocparam(type = "IN", cfsqltype = "CF_SQL_VARCHAR", value = txtBookingNumber);
+                cfprocparam(type = "out", cfsqltype = "CF_SQL_VARCHAR", variable = "sErrorMessage2");
+            }
+            return trim(sErrorMessage2);
+        } catch (any e) {
+            return 'Error happened when calling enroll_autocharge to enroll: ' & e.message;
+        }
+    }
+
     public boolean function insertCreditCard(required struct transactionStruct) {
         try {
             cfstoredproc(procedure = "INSERT_CREDIT_CARD_LUCEE", datasource = variables.datasourceWebgold) {
