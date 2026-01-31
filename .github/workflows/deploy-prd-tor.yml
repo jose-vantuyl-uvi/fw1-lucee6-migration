@@ -58,3 +58,32 @@ jobs:
         run: |
           echo "Image pushed with tags: ${{ steps.meta.outputs.tags }}"
           echo "Short SHA tag: ${{ steps.meta.outputs.version }}"
+
+  update-helm:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout helm charts repo
+        uses: actions/checkout@v4
+        with:
+          repository: sanservices/uvi-k8-helm-charts
+          ref: poc/lucee6-groups-online-payment
+          token: ${{ secrets.HELM_REPO_TOKEN }}
+          path: helm-charts
+
+      - name: Update image tag in values
+        run: |
+          cd helm-charts/ui/groups-online-payment-ui
+          # Update the image tag in values-prd-tor.yaml
+          sed -i 's/tag: ".*"/tag: "${{ needs.build-and-push.outputs.image_tag }}"/' values-prd-tor.yaml
+          echo "Updated image tag to: ${{ needs.build-and-push.outputs.image_tag }}"
+          grep "tag:" values-prd-tor.yaml
+
+      - name: Commit and push changes
+        run: |
+          cd helm-charts
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add .
+          git diff --staged --quiet || git commit -m "Update groups-online-payment-ui image to ${{ needs.build-and-push.outputs.image_tag }}"
+          git push
